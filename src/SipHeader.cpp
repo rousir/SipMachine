@@ -26,11 +26,7 @@ void SipHeader::parse(String in)
         setContentLength(in);
     if (in.indexOf("Contact: ") > -1)
         setContact(in);
-    if (in.indexOf("INVITE sip:") > -1)
-    {
-        setInvite(in);
-        responseCodes = 2;
-    }
+
     if (in.indexOf("ACK sip:") > -1)
     {
         responseCodes = 0;
@@ -38,6 +34,19 @@ void SipHeader::parse(String in)
     if (in.indexOf("BYE sip:") > -1)
     {
         responseCodes = 1;
+    }
+    if (in.indexOf("INVITE sip:") > -1)
+    {
+        setInvite(in);
+        responseCodes = 2;
+    }
+    if (in.indexOf("CANCEL sip:") > -1)
+    {
+        responseCodes = 3;
+    }
+    if (in.indexOf("MESSAGE sip:") > -1)
+    {
+        responseCodes = 4;
     }
 }
 SipHeader::Gk SipHeader::parsGk(String in)
@@ -71,6 +80,7 @@ SipHeader::Gk SipHeader::parsGk(String in)
     ret.ip = gks;
     return ret;
 }
+
 String SipHeader::find(String x, String in)
 {
     String ret = "";
@@ -96,8 +106,13 @@ String SipHeader::getVia()
     String str;
     str = "Via: SIP/2.0/TCP ";
     str += via.userClient;
-    str += ":";
-    str += via.port;
+    
+    if (via.port != 0)
+    {
+        str += ":";
+        str += via.port;
+    }
+    
     str += ";branch=";
     str += via.branch;
     return str;
@@ -164,7 +179,7 @@ String SipHeader::getContact()
     str += contact.telNr;
     str += "@";
     str += contact.userClient;
-    str += ";transport=tcp>";
+    str += ";transport=TCP>";
     return str;
 }
 String SipHeader::getAllow()
@@ -186,6 +201,7 @@ String SipHeader::getContentLength(int contentLength)
     str += String(contentLength);
     return str;
 }
+
 String SipHeader::getAuthorisation()
 {
     authenticate.nc = 1;
@@ -197,23 +213,23 @@ String SipHeader::getAuthorisation()
     String str;
     str += "Authorization: Digest username=\"";
     str += authenticate.user;
+
     str += "\",realm=\"";
     str += authenticate.realm;
+
     str += "\",nonce=\"";
     str += authenticate.nonce;
-    str += "\",opaque=\"\",uri=\"sip:";
+
+    str += "\",uri=\"sip:";
     str += authenticate.uri;
-    str += "\",cnonce=\"";
-    str += authenticate.cNonce;
-    str += "\",nc=";
-    str += authenticate.nonceCount;
-    str += ",algorithm=MD5,qop=\"";
-    str += authenticate.qop;
+
     str += "\",response=\"";
     str += authenticate.response;
-    str += "\"";
+
+    str += "\",algorithm=MD5";
     return str;
 }
+
 void SipHeader::setResposeCode(String in)
 {
     responseCodes = in.substring(in.indexOf("SIP/2.0 ") + 8, in.indexOf(" ", 8)).toInt();
@@ -274,7 +290,7 @@ void SipHeader::setVia(String in)
     debugL2_println(String(" sipHeaderR.via.port         ") + String(via.port));
     via.branch = find("branch=", in);
     debugL2_println(String(" sipHeaderR.via.branch       ") + String(via.branch.c_str()));
-    via.userClient = in.substring(in.indexOf(" ", in.indexOf("Via: ") + 5) + 1, in.indexOf(":", in.indexOf("Via: ") + 5));
+    // via.userClient = in.substring(in.indexOf(" ", in.indexOf("Via: ") + 5) + 1, in.indexOf(":", in.indexOf("Via: ") + 5));
     debugL2_println(String(" sipHeaderR.via.userClient   ") + String(via.userClient.c_str()));
 }
 void SipHeader::setContentLength(String in)

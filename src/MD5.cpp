@@ -1,6 +1,6 @@
 #include "MD5.h"
-#include "Debug.h"
-MD5::MD5() 
+#include <Debug.h>
+MD5::MD5()
 {
 	//nothing
 	return;
@@ -313,15 +313,20 @@ String MD5::encrypt(String encrypts)
 String MD5::getAuth(SipHeader::Authenticate auth)
 {
     String a1 = auth.user + ":" + auth.realm + ":" + auth.pwd;
-    debugL2_println(String(" a1= ")+a1);
+    Serial.println(String(" a1= ")+a1);
+
     String ha1 = encrypt(a1);
-    debugL2_println(String(" ha1= ")+ha1);
+    Serial.println(String(" ha1= ")+ha1);
+
     String a2 = auth.types + ":sip:" + getUri(auth);
-    debugL2_println(String(" a2= ")+a2);
+    Serial.println(String(" a2= ")+a2);
+
     String ha2 = encrypt(a2);
-    debugL2_println(String(" ha2= ")+ha2);
-    String a3 = ha1 + ":" + auth.nonce + ":" + auth.nonceCount + ":" + auth.cNonce + ":" + auth.qop + ":" + ha2;
-    debugL2_println(String(" a3= ")+a3);
+    Serial.println(String(" ha2= ")+ha2);
+
+    String a3 = ha1 + ":" + auth.nonce + ":" + ha2;
+    Serial.println(String(" a3= ")+a3);
+
     String ret=encrypt(a3);
     return ret;
 }

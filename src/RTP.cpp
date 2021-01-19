@@ -28,10 +28,13 @@ void RTP::put(int16_t value)
 
     size_t p = (micros() % 20000) / 125;
     rtpBuffer.b[p] = ALaw_Encode(value);
- 
+
+    // }
 }
 int16_t RTP::get(uint8_t pos)
 {
+    // size_t p = (micros() % 20000) / 125;
+
     switch (rtpBuffer.pt)
     {
     case 0:
@@ -45,6 +48,7 @@ int16_t RTP::get(uint8_t pos)
         break;
     }
 }
+
 int8_t RTP::ALaw_Encode(int16_t number)
 {
     const uint16_t ALAW_MAX = 0xFFF;
@@ -66,6 +70,7 @@ int8_t RTP::ALaw_Encode(int16_t number)
     lsb = (number >> ((position == 4) ? (1) : (position - 4))) & 0x0f;
     return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
 }
+
 int16_t RTP::ALaw_Decode(int8_t number)
 {
     uint8_t sign = 0x00;
@@ -88,6 +93,40 @@ int16_t RTP::ALaw_Decode(int8_t number)
     }
     return (sign == 0) ? (decoded) : (-decoded);
 }
+
+int8_t RTP::alaw_encode(int16_t pcm)
+{
+    const uint16_t ALAW_MAX = 0xFFF;
+    int sign = (pcm & 0x8000) >> 8;
+    if (sign != 0)
+        pcm = -pcm;
+
+    if (pcm > ALAW_MAX)   pcm = ALAW_MAX;
+
+    int exponent = 7;
+    int expMask;
+    for (expMask = 0x4000; (pcm & expMask) == 0 && exponent > 0; exponent--, expMask >>= 1) {}
+    int mantissa = (pcm >> ((exponent == 0) ? 4 : (exponent + 3))) & 0x0f;
+    unsigned char alaw = (unsigned char)(sign | exponent << 4 | mantissa);
+    return (unsigned char)(alaw ^ 0xD5);
+}
+
+int16_t RTP::alaw_decode(int8_t alaw)
+{
+    alaw ^= 0xD5;
+    int sign = alaw & 0x80;
+    int exponent = (alaw & 0x70) >> 4;
+    int data = alaw & 0x0f;
+    data <<= 4;
+    data += 8;   //丢失的a 写1
+    if (exponent != 0) //将wxyz前面的1补上
+        data += 0x100;
+    if (exponent > 1)
+        data <<= (exponent - 1);
+
+    return (short)(sign == 0 ? data : -data);
+}
+
 int8_t RTP::MuLaw_Encode(int16_t number)
 {
     const uint16_t MULAW_MAX = 0x1FFF;
@@ -166,7 +205,8 @@ char RTP::getDtmf()
                   abs(data[24].real()) + abs(data[14].real()),
                   abs(data[19].real()) + abs(data[15].real()),
                   abs(data[21].real()) + abs(data[15].real()),
-                  abs(data[24].real()) + abs(data[15].real())};
+                  abs(data[24].real()) + abs(data[15].real())
+                 };
 
     char l[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'};
 

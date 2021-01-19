@@ -16,11 +16,10 @@ private:
     typedef std::complex<double> Complex;
     typedef std::valarray<Complex> CArray;
 
-
-
     bool is_big;
     int8_t ALaw_Encode(int16_t number);
     int16_t ALaw_Decode(int8_t number);
+
     int8_t MuLaw_Encode(int16_t number);
     int16_t MuLaw_Decode(int8_t number);
     bool is_big_endian(void);
@@ -28,6 +27,9 @@ private:
 
 public:
     RTP();
+    
+    int8_t alaw_encode(int16_t pcm);
+    int16_t alaw_decode(int8_t alaw);
 
     struct Rtp
     {
@@ -36,10 +38,11 @@ public:
         uint8_t p : 1;
         uint8_t version : 2;
         // byte 0
+
         uint8_t pt : 7;
         uint8_t m : 1;
-
         //byte 1
+        
         uint16_t sequenceNumber;
         //byte 3
         uint32_t timestamp;
