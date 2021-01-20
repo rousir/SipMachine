@@ -310,6 +310,13 @@ String MD5::encrypt(String encrypts)
     return ret;
 }
 
+/**
+ * [MD5::getAuth 计算登录验证response]
+ *
+ * @DateTime 2021-01-20
+ * @param    auth
+ * @return
+ */
 String MD5::getAuth(SipHeader::Authenticate auth)
 {
     String a1 = auth.user + ":" + auth.realm + ":" + auth.pwd;
@@ -331,7 +338,14 @@ String MD5::getAuth(SipHeader::Authenticate auth)
     return ret;
 }
 
-String MD5::getUri(SipHeader::Authenticate auth )
+/**
+ * [MD5::getUri 获取sip url]
+ *
+ * @DateTime 2021-01-20
+ * @param    auth
+ * @return
+ */
+String MD5::getUri(SipHeader::Authenticate auth)
 {
 
     if (auth.telNr.length()==0)

@@ -3,6 +3,12 @@
 #include <Arduino.h>
 #include "Debug.h"
 
+/**
+ * [SipHeader::parse 解析处理Sip数据包]
+ *
+ * @DateTime 2021-01-20
+ * @param    in 待解析的sip数据包
+ */
 void SipHeader::parse(String in)
 {
     String ret = "";
@@ -49,6 +55,14 @@ void SipHeader::parse(String in)
         responseCodes = 4;
     }
 }
+
+/**
+ * [SipHeader::parsGk 解析sip头]
+ *
+ * @DateTime 2021-01-20
+ * @param    in 待解析的sip头
+ * @return 解析后的sip 头结构体
+ */
 SipHeader::Gk SipHeader::parsGk(String in)
 {
     Gk ret;
@@ -81,6 +95,14 @@ SipHeader::Gk SipHeader::parsGk(String in)
     return ret;
 }
 
+/**
+ * [SipHeader::find 在in中查找x]
+ *
+ * @DateTime 2021-01-20
+ * @param    x
+ * @param    in
+ * @return
+ */
 String SipHeader::find(String x, String in)
 {
     String ret = "";
@@ -101,6 +123,13 @@ String SipHeader::find(String x, String in)
     }
     return ret;
 }
+
+/**
+ * [SipHeader::getVia 获取via字段]
+ *
+ * @DateTime 2021-01-20
+ * @return 当前via字段
+ */
 String SipHeader::getVia()
 {
     String str;
@@ -117,6 +146,13 @@ String SipHeader::getVia()
     str += via.branch;
     return str;
 }
+
+/**
+ * [SipHeader::getMaxForwards 获取MaxForwards字段]
+ *
+ * @DateTime 2021-01-20
+ * @return 当前MaxForwards字段
+ */
 String SipHeader::getMaxForwards()
 {
     String str;

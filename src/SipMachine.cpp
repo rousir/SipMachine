@@ -1,7 +1,17 @@
 #include "SipMachine.h"
 #include "Debug.h"
 
-
+/**
+ * [SipMachine::SipMachine sip类]
+ *
+ * @DateTime 2021-01-20
+ * @param    user 用户名
+ * @param    pwd 密码
+ * @param    telNr 本机号码
+ * @param    userAgent 本机代理
+ * @param    proxyRegistrar sip服务地址
+ * @param    port sip服务器端口
+ */
 SipMachine::SipMachine(String user, String pwd, String telNr, String userAgent, String proxyRegistrar, int port)
 {
     this->user = user;
@@ -16,6 +26,13 @@ SipMachine::SipMachine(String user, String pwd, String telNr, String userAgent, 
     timeStOut = timeStOut * 20000;
 }
 
+/**
+ * [SipMachine::setup 设置本机地址和服务地址]
+ *
+ * @DateTime 2021-01-20
+ * @param    userClient 本机ip地址
+ * @param    proxyServer 服务地址
+ */
 void SipMachine::setup(String userClient, String proxyServer)
 {
     this->proxyServer = proxyServer;
@@ -26,6 +43,13 @@ void SipMachine::setup(String userClient, String proxyServer)
     udpIpWrite = strToIP(proxyServer);
 }
 
+/**
+ * [SipMachine::strToIP ip字符串转ip]
+ *
+ * @DateTime 2021-01-20
+ * @param    str ip字符串
+ * @return
+ */
 IPAddress SipMachine::strToIP(String str)
 {
     byte adr[4];
@@ -40,11 +64,24 @@ IPAddress SipMachine::strToIP(String str)
     return ip;
 }
 
+/**
+ * [SipMachine::setEvent 设置事件回调]
+ *
+ * @DateTime 2021-01-20
+ * @param    event 回调函数
+ */
 void SipMachine::setEvent(callbackEvent event)
 {
     this->event_cb = event;
 }
 
+/**
+ * [SipMachine::loop sip类客户端主循环]
+ *
+ * @DateTime 2021-01-20
+ * @param    pcmOut pcm数据输入
+ * @return
+ */
 int16_t SipMachine::loop(short pcmOut)
 {
     int ret;
@@ -164,16 +201,33 @@ int16_t SipMachine::loop(short pcmOut)
     return 0;
 }
 
+/**
+ * [SipMachine::parserSdp 处理SDP协议数据]
+ *
+ * @DateTime 2021-01-20
+ * @param    in 待处理的SDP协议数据
+ */
 void SipMachine::parserSdp(String in)
 {
     sdpHeader.parse(in);
 }
 
+/**
+ * [SipMachine::parserSip 处理SIP协议数据]
+ *
+ * @DateTime 2021-01-20
+ * @param    in 待处理的SIP协议数据
+ */
 void SipMachine::parserSip(String in)
 {
     sipHeader.parse(in);
 }
 
+/**
+ * [SipMachine::exec 解析sip数据后的相关处理]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::exec()
 {
     int ret;
@@ -298,6 +352,13 @@ void SipMachine::exec()
         break;
     }
 }
+
+/**
+ * [SipMachine::writeSIPdata 发送数据到SIP服务器]
+ *
+ * @DateTime 2021-01-20
+ * @param    message
+ */
 void SipMachine::writeSIPdata(String message)
 {
     size_t ret = sock_sip.println(message);
@@ -307,6 +368,11 @@ void SipMachine::writeSIPdata(String message)
     }
 }
 
+/**
+ * [SipMachine::sipRegister 连接sip服务器， 发送sip注册包]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipRegister()
 {
     sock_sip = WiFiClient();
@@ -351,6 +417,11 @@ void SipMachine::sipRegister()
     }
 }
 
+/**
+ * [SipMachine::sipRinging 回应sip Ringing响铃]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipRinging()
 {
     debug_println("*****  Ringing *****");
@@ -372,6 +443,11 @@ void SipMachine::sipRinging()
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::sipOk 回复SIP OK]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipOk()
 {
     debug_println("*****  Ok *****");
@@ -416,6 +492,12 @@ void SipMachine::sipOk()
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::sipInvite 呼叫sip分机]
+ *
+ * @DateTime 2021-01-20
+ * @param    telNrTo 分机号码
+ */
 void SipMachine::sipInvite(String telNrTo)
 {
     debug_println("*****  Invite *****");
@@ -478,6 +560,11 @@ void SipMachine::sipInvite(String telNrTo)
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::sipAck sip ack数据包，通常在呼叫搜到对方响应后回应]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipAck()
 {
     debug_println("*****  ACK *****");
@@ -500,6 +587,11 @@ void SipMachine::sipAck()
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::sipBye sip挂断通话]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipBye()
 {
     debug_println("*****  BYE *****");
@@ -534,6 +626,11 @@ void SipMachine::sipBye()
     debug_println("*****  BYE *****");
 }
 
+/**
+ * [SipMachine::sipAuth 搜到480请求重新验证]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipAuth()
 {
     debug_print("***** ");
@@ -583,6 +680,11 @@ void SipMachine::sipAuth()
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::sipRegisterAuth 连接sipserver后回应401请求]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipRegisterAuth()
 {
     sipHeader.cSeq.cSeq++;
@@ -625,6 +727,13 @@ void SipMachine::sipRegisterAuth()
     }
 }
 
+/**
+ * [SipMachine::sipSendMessage 发送短信到其他分机]
+ *
+ * @DateTime 2021-01-20
+ * @param    telNrTo 分机号
+ * @param    message 发送的消息
+ */
 void SipMachine::sipSendMessage(String telNrTo, String message)
 {
     debug_println("*****  Message *****");
@@ -670,6 +779,11 @@ void SipMachine::sipSendMessage(String telNrTo, String message)
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::sipCancel 发送取消命令]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::sipCancel()
 {
     debug_println("*****  CANCEL *****");
@@ -713,6 +827,13 @@ void SipMachine::sipCancel()
     writeSIPdata(str);
 }
 
+/**
+ * [SipMachine::randomChr 生成随机字符串0-9a-z]
+ *
+ * @DateTime 2021-01-20
+ * @param    size 生成的字符串长度
+ * @return
+ */
 String SipMachine::randomChr(int size)
 {
     String ret = "";
@@ -734,17 +855,34 @@ String SipMachine::randomChr(int size)
     return ret;
 }
 
+/**
+ * [SipMachine::getTelNrIncomingCall 获取呼入的号码]
+ *
+ * @DateTime 2021-01-20
+ * @return 呼入的号码
+ */
 String SipMachine::getTelNrIncomingCall()
 {
     return sipHeader.from.telNr;
 }
 
+/**
+ * [SipMachine::acceptIncomingCall 接听呼叫]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::acceptIncomingCall()
 {
     sipOk();
     status = callAccept;
 }
 
+/**
+ * [SipMachine::makeCall 拨打电话]
+ *
+ * @DateTime 2021-01-20
+ * @param    telNrTo 拨打的分机号
+ */
 void SipMachine::makeCall(String telNrTo)
 {
     // this->telNrTo = telNrTo;
@@ -752,34 +890,68 @@ void SipMachine::makeCall(String telNrTo)
     status = ringOut;
 }
 
+/**
+ * [SipMachine::cancelCall 取消呼叫]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::cancelCall()
 {
     sipCancel();
     status = idle;
 }
 
+/**
+ * [SipMachine::bye 挂断电话]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::bye()
 {
     sipBye();
     status = idle;
 }
 
+/**
+ * [SipMachine::sendMessage 发送消息]
+ *
+ * @DateTime 2021-01-20
+ * @param    telNrTo 收信号码
+ * @param    message 发送的消息
+ */
 void SipMachine::sendMessage(String telNrTo, String message)
 {
     sipSendMessage(telNrTo, message);
     status = messageOut;
 }
 
+/**
+ * [SipMachine::getKeyPressedLast20 获取drmf]
+ *
+ * @DateTime 2021-01-20
+ * @return dtmf数据
+ */
 String SipMachine::getKeyPressedLast20()
 {
     return dtmf;
 }
 
+/**
+ * [SipMachine::getStatus 获取当前状态]
+ *
+ * @DateTime 2021-01-20
+ * @return 当前状态
+ */
 SipMachine::Status SipMachine::getStatus()
 {
     return status;
 }
 
+/**
+ * [SipMachine::getDtmfData 解析读取到的dtmf数据帧]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::getDtmfData()
 {
     if (udp.available())
@@ -807,9 +979,11 @@ void SipMachine::getDtmfData()
     }
 }
 
-/*
-    获取音频数据
-*/
+/**
+ * [SipMachine::getSpeachData 解析收到的音频数据]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::getSpeachData()
 {
     if (udp.available())
@@ -842,9 +1016,11 @@ void SipMachine::getSpeachData()
     }
 }
 
-/*
-    发送音频数据
-*/
+/**
+ * [SipMachine::writeSpeachData 发送一帧音频数据]
+ *
+ * @DateTime 2021-01-20
+ */
 void SipMachine::writeSpeachData()
 {
     int16_t pcm = 0;
@@ -873,6 +1049,12 @@ void SipMachine::writeSpeachData()
     debugL2_println("");
 }
 
+/**
+ * [SipMachine::getMessageInData 获取收到的信息]
+ *
+ * @DateTime 2021-01-20
+ * @return 收到的信息
+ */
 String SipMachine::getMessageInData() {
     return messageData;
 }

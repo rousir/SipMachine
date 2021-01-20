@@ -13,6 +13,13 @@ RTP::RTP()
     setSequenceNumber(random(1000));
     setTimestamp(random(1000));
 }
+
+/**
+ * [RTP::is_big_endian 获取当前大小端模式]
+ *
+ * @DateTime 2021-01-20
+ * @return
+ */
 bool RTP::is_big_endian(void)
 {
     union
@@ -23,6 +30,13 @@ bool RTP::is_big_endian(void)
 
     return bint.c[0] == 1;
 }
+
+/**
+ * [RTP::put 传一个pcm数据到rtp数据帧中]
+ *
+ * @DateTime 2021-01-20
+ * @param    value 传入的pcm数据
+ */
 void RTP::put(int16_t value)
 {
 
@@ -31,6 +45,14 @@ void RTP::put(int16_t value)
 
     // }
 }
+
+/**
+ * [RTP::get 从收到的rtp数据帧中获取一个pcm数据]
+ *
+ * @DateTime 2021-01-20
+ * @param    pos rtp数据帧脚标
+ * @return 获取到的pcm数据
+ */
 int16_t RTP::get(uint8_t pos)
 {
     // size_t p = (micros() % 20000) / 125;
@@ -49,6 +71,13 @@ int16_t RTP::get(uint8_t pos)
     }
 }
 
+/**
+ * [RTP::ALaw_Encode alaw压缩]弃用
+ *
+ * @DateTime 2021-01-20
+ * @param    number 待压缩的pcm数据
+ * @return 压缩后的数据
+ */
 int8_t RTP::ALaw_Encode(int16_t number)
 {
     const uint16_t ALAW_MAX = 0xFFF;
@@ -71,6 +100,13 @@ int8_t RTP::ALaw_Encode(int16_t number)
     return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
 }
 
+/**
+ * [RTP::ALaw_Decode alaw解压]弃用
+ *
+ * @DateTime 2021-01-20
+ * @param    number 待解压的alaw数据
+ * @return 解压后的pcm数据
+ */
 int16_t RTP::ALaw_Decode(int8_t number)
 {
     uint8_t sign = 0x00;
@@ -94,6 +130,13 @@ int16_t RTP::ALaw_Decode(int8_t number)
     return (sign == 0) ? (decoded) : (-decoded);
 }
 
+/**
+ * [RTP::ALaw_Encode alaw压缩]
+ *
+ * @DateTime 2021-01-20
+ * @param    number 待压缩的pcm数据
+ * @return 压缩后的数据
+ */
 int8_t RTP::alaw_encode(int16_t pcm)
 {
     const uint16_t ALAW_MAX = 0xFFF;
@@ -111,6 +154,13 @@ int8_t RTP::alaw_encode(int16_t pcm)
     return (unsigned char)(alaw ^ 0xD5);
 }
 
+/**
+ * [RTP::alaw_decode alaw解压]
+ *
+ * @DateTime 2021-01-20
+ * @param    number 待解压的alaw数据
+ * @return 解压后的pcm数据
+ */
 int16_t RTP::alaw_decode(int8_t alaw)
 {
     alaw ^= 0xD5;
@@ -127,6 +177,13 @@ int16_t RTP::alaw_decode(int8_t alaw)
     return (short)(sign == 0 ? data : -data);
 }
 
+/**
+ * [RTP::MuLaw_Encode MuLaw压缩]
+ *
+ * @DateTime 2021-01-20
+ * @param    number
+ * @return
+ */
 int8_t RTP::MuLaw_Encode(int16_t number)
 {
     const uint16_t MULAW_MAX = 0x1FFF;
@@ -150,6 +207,14 @@ int8_t RTP::MuLaw_Encode(int16_t number)
     lsb = (number >> (position - 4)) & 0x0f;
     return (~(sign | ((position - 5) << 4) | lsb));
 }
+
+/**
+ * [RTP::MuLaw_Decode MuLaw解压]
+ *
+ * @DateTime 2021-01-20
+ * @param    number
+ * @return
+ */
 int16_t RTP::MuLaw_Decode(int8_t number)
 {
     const uint16_t MULAW_BIAS = 33;
@@ -165,6 +230,13 @@ int16_t RTP::MuLaw_Decode(int8_t number)
     decoded = ((1 << position) | ((number & 0x0F) << (position - 4)) | (1 << (position - 5))) - MULAW_BIAS;
     return (sign == 0) ? (decoded) : (-(decoded));
 }
+
+/**
+ * [RTP::fft 计算ftt]
+ *
+ * @DateTime 2021-01-20
+ * @param    x
+ */
 void RTP::fft(CArray &x)
 {
     const size_t N = x.size();
@@ -187,6 +259,13 @@ void RTP::fft(CArray &x)
         x[k + N / 2] = even[k] - t;
     }
 }
+
+/**
+ * [RTP::getDtmf 获取当前的dtmf]
+ *
+ * @DateTime 2021-01-20
+ * @return
+ */
 char RTP::getDtmf()
 {
     CArray data(128);
