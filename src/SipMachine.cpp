@@ -76,6 +76,28 @@ void SipMachine::setEvent(callbackEvent event)
 }
 
 /**
+ * [SipMachine::setReadSpeachPcmCallback 设置读取到音频数据回调]
+ *
+ * @DateTime 2021-01-22
+ * @param    cb
+ */
+void SipMachine::setReadSpeachPcmCallback(readSpeachPcmCallback cb)
+{
+    read_speach_pcm_cb = cb;
+}
+
+/**
+ * [SipMachine::setWriteSpeachPcmCallback 设置发送音频数据回调]
+ *
+ * @DateTime 2021-01-22
+ * @param    cb
+ */
+void SipMachine::setWriteSpeachPcmCallback(writeSpeachPcmCallback cb)
+{
+    write_speach_pcm_cb = cb;
+}
+
+/**
  * [SipMachine::loop sip类客户端主循环]
  *
  * @DateTime 2021-01-20
@@ -256,6 +278,7 @@ void SipMachine::exec()
         ret = udp.begin(sdpHeader.udpPortRead);
         debug_println(String("Start UDP") + ((ret == 1) ? "TRUE" : "FALSE") + " on Port " + sdpHeader.udpPortRead);
         status = call;
+        if (event_cb) event_cb(SIPMACHINE_EVENT_ACK);
         break;
     case 1:
         debug_println("Execute BYE");
@@ -263,6 +286,7 @@ void SipMachine::exec()
         udp.stop();
         debug_println(String("Stop UDP read "));
         status = idle;
+        if (event_cb) event_cb(SIPMACHINE_EVENT_BYE);
         break;
     case 2:
         debug_println("Execute INVITE");
@@ -272,16 +296,19 @@ void SipMachine::exec()
         sdpHeader.udpPortRead = sdpHeader.udpPortWrite + 10;
         sipRinging();
         status = ringIn;
+        if (event_cb) event_cb(SIPMACHINE_EVENT_INVITE);
         break;
     case 3:
         debug_println("Execute CANCEL");
         sipOk();
         status = idle;
+        if (event_cb) event_cb(SIPMACHINE_EVENT_CANCEL);
         break;
     case 4:
         debug_println("Execute MESSAGE");
         sipOk();
         status = messageIn;
+        if (event_cb) event_cb(SIPMACHINE_EVENT_MESSAGE);
         break;
     case 100:
         debug_println("Execute 100 Trying");
@@ -289,6 +316,7 @@ void SipMachine::exec()
     case 180:
         debug_println("Execute 180 Ringing");
         status = ringOut;
+        if (event_cb) event_cb(SIPMACHINE_EVENT_RINGING);
         break;
     case 200:
         if (sipHeader.cSeq.typ.equals("REGISTER"))
@@ -296,6 +324,7 @@ void SipMachine::exec()
             debug_println("Execute 200 OK Register");
             timeExpires += sipHeader.contact.expires.toInt() * 1000;
             status = idle;
+            if (event_cb) event_cb(SIPMACHINE_EVENT_REGISTER_OK);
         }
         else if (sipHeader.cSeq.typ.equals("INVITE"))
         {
@@ -304,17 +333,20 @@ void SipMachine::exec()
             sipAck();
             status = call;
             udpIpWrite = strToIP(sdpHeader.o.municastAddress);
+            if (event_cb) event_cb(SIPMACHINE_EVENT_INVITE_OK);
         }
         else if (sipHeader.cSeq.typ.equals("MESSAGE"))
         {
             debug_println("Execute 200 OK MESSAGE");
             timeExpires += sipHeader.contact.expires.toInt() * 1000;
             status = idle;
+            if (event_cb) event_cb(SIPMACHINE_EVENT_MESSAGE_OK);
         }
         break;
     case 401:
         debug_println("Execute 401 sipRegisterAuth");
         sipRegisterAuth();
+        if (event_cb) event_cb(SIPMACHINE_EVENT_REGISTER_AUTH);
         break;
     case 403:
         debug_println("Execute 403 Forbidden");
@@ -322,6 +354,7 @@ void SipMachine::exec()
         // debug_println(String("sock_sip.stop"));
         udp.stop();
         debug_println(String("Stop UDP read and Write"));
+        if (event_cb) event_cb(sipHeader.responseCodes);
         break;
     case 404:
         debug_println("Execute 404 Not Found");
@@ -329,6 +362,7 @@ void SipMachine::exec()
         // debug_println(String("sock_sip.stop"));
         udp.stop();
         debug_println(String("Stop UDP read  and Write"));
+        if (event_cb) event_cb(SIPMACHINE_EVENT_NOT_FOUND);
         break;
     case 407:
         debug_println("Execute 407 Proxy Authentication Required");
@@ -336,9 +370,11 @@ void SipMachine::exec()
         sipAuth();
         ret = udp.begin(sdpHeader.udpPortRead);
         debug_println(String("Start UDP read ") + ((ret == 1) ? "TRUE" : "FALSE") + " on Port " + sdpHeader.udpPortRead);
+        if (event_cb) event_cb(sipHeader.responseCodes);
         break;
     case 481:
         debug_println(" Execute 481 Call Leg/Transaction Does Not Exist ");
+        if (event_cb) event_cb(SIPMACHINE_EVENT_NOT_EXIST);
         break;
     case 486:
         debug_println("Execute 486 Busy Here");
@@ -346,6 +382,7 @@ void SipMachine::exec()
         // debug_println(String("sock_sip.stop"));
         udp.stop();
         debug_println(String("Stop UDP read "));
+        if (event_cb) event_cb(SIPMACHINE_EVENT_BUSY_HERE);
         break;
     default:
         debug_println(String(sipHeader.responseCodes) + " does not Exists :-)");
@@ -363,7 +400,7 @@ void SipMachine::writeSIPdata(String message)
 {
     size_t ret = sock_sip.println(message);
     debugL1_println(message.c_str());
-    if (ret < 0){
+    if (ret < 0) {
         debugL1_println(ret);
     }
 }
@@ -990,13 +1027,12 @@ void SipMachine::getSpeachData()
     {
         int ret = udp.readBytes((uint8_t *) & (rtpIn.rtpBuffer), sizeof(rtpIn.rtpBuffer));
 
-        int16_t sample[2];
         for (int i = 0; i < 160; ++i)
         {
-            sample[0] = rtpIn.alaw_decode(rtpIn.rtpBuffer.b[i]);
-            sample[1] = sample[0];
-
-            i2s_write_bytes(I2S_NUM_0, (const char *)&sample, 4, 0xffff);
+            int16_t pcm = rtpIn.alaw_decode(rtpIn.rtpBuffer.b[i]);
+            if (read_speach_pcm_cb) {
+                read_speach_pcm_cb(pcm);
+            }
         }
 
         debugL2_print(String("UDP read count ") + String(ret));
@@ -1028,8 +1064,9 @@ void SipMachine::writeSpeachData()
 
     for (int i = 0; i < 160; ++i)
     {
-        // i2s_read_bytes(I2S_NUM_1, (char *)&pcm_buf, 4, 0xffff);
-        pcm = pcm_buf[0] + pcm_buf[1] * 256;
+        if (write_speach_pcm_cb) {
+            pcm = write_speach_pcm_cb();
+        }
         rtpOut.rtpBuffer.b[i] = rtpIn.alaw_encode(pcm);
     }
 

@@ -12,8 +12,24 @@
 
 #include "driver/i2s.h"
 
+#define SIPMACHINE_EVENT_REGISTER_AUTH 0x01
+#define SIPMACHINE_EVENT_ACK          0x02
+#define SIPMACHINE_EVENT_CANCEL       0x03
+#define SIPMACHINE_EVENT_MESSAGE      0x04
+#define SIPMACHINE_EVENT_INVITE       0x05
+#define SIPMACHINE_EVENT_BYE          0x06
+#define SIPMACHINE_EVENT_RINGING      0x07
+#define SIPMACHINE_EVENT_REGISTER_OK  0x08
+#define SIPMACHINE_EVENT_INVITE_OK    0x09
+#define SIPMACHINE_EVENT_MESSAGE_OK   0x0A
+#define SIPMACHINE_EVENT_NOT_FOUND    0x0B
+#define SIPMACHINE_EVENT_NOT_EXIST    0x0C
+#define SIPMACHINE_EVENT_BUSY_HERE    0x0D
+
 extern "C" {
   typedef void (*callbackEvent)(int status);
+  typedef void (*readSpeachPcmCallback)(int16_t pcm);
+  typedef int16_t (*writeSpeachPcmCallback)();
 }
 
 class SipMachine
@@ -53,7 +69,9 @@ public:
     String getMessageInData();
     void sendMessage(String telNrTo, String message);
     
-
+    void setReadSpeachPcmCallback(readSpeachPcmCallback cb);
+    void setWriteSpeachPcmCallback(writeSpeachPcmCallback cb);
+    
 private:
     unsigned long timeExpires = 0;
     unsigned long timeStOut=0;
@@ -116,6 +134,8 @@ private:
     String messageData;
 
     callbackEvent event_cb;
+    readSpeachPcmCallback read_speach_pcm_cb;
+    writeSpeachPcmCallback write_speach_pcm_cb;
 
 protected:
     Status status = init;

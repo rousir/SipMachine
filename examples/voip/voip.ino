@@ -1,79 +1,48 @@
 #include <Arduino.h>
 #include "WiFi.h"
+
 #include "SipMachine.h"
 #include "Debug.h"
 
-#include <SPIFFS.h>
-#include <SD.h>
-
 #include "driver/i2s.h"
 
-const char *ssid = "b209";            // your network SSID (name)
-const char *password = "bao12345678"; // your network password (use for WPA, or use as key for WEP)
+const char *ssid = "xxx";            // your network SSID (name)
+const char *password = "xxxxxxx"; // your network password (use for WPA, or use as key for WEP)
 
 String telNr = "10013";
-String serverIp = "192.168.31.21";
+String serverIp = "192.168.2.21";
+String serverAgent = "192.168.2.21:5060";
 
-SipMachine sipMachine = SipMachine("10013", "1234", telNr, serverIp + String(":5060"), serverIp); //esp
+String user = "10013";
+String pwd  = "1234";
 
-unsigned long t2 = millis();
-unsigned long t4 = micros();
-unsigned long t5 = millis();
-
+SipMachine sipMachine = SipMachine(user, pwd, telNr, serverAgent, serverIp); //esp
 SipMachine::Status status;
-int16_t pcmOut = 0;
-int16_t pcmIn;
 
-#define I2S_NUM_TX I2S_NUM_0
-#define I2S_NUM_RX I2S_NUM_1
+#define I2S_NUM_TXRX I2S_NUM_0
 
 #define PIN_I2S_BCLK    26
 #define PIN_I2S_LRC     27
 #define PIN_I2S_DIN     34
 #define PIN_I2S_DOUT    25
 
-#define PIN_CARDCS        22     // Card chip select pin
-
-//format bytes
-String formatBytes(size_t bytes) {
-    if (bytes < 1024) {
-        return String(bytes) + "B";
-    } else if (bytes < (1024 * 1024)) {
-        return String(bytes / 1024.0) + "KB";
-    } else if (bytes < (1024 * 1024 * 1024)) {
-        return String(bytes / 1024.0 / 1024.0) + "MB";
-    } else {
-        return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
-    }
-}
-
-void printFileList(fs::File fd){
-
-}
-
-void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS, i2s_port_t I2S_NUM, int rate) {
+void I2S_Init(i2s_bits_per_sample_t BPS, i2s_port_t I2S_NUM, int rate) {
     i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | MODE),
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX),
         .sample_rate = rate,
         .bits_per_sample = BPS,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
         .intr_alloc_flags = 0,
-        .dma_buf_count = 16,
-        .dma_buf_len = 60
+        .dma_buf_count = 4,
+        .dma_buf_len = 256
     };
 
     i2s_pin_config_t pin_config;
     pin_config.bck_io_num = PIN_I2S_BCLK;
     pin_config.ws_io_num = PIN_I2S_LRC;
-    if (MODE == I2S_MODE_RX) {
-        pin_config.data_out_num = I2S_PIN_NO_CHANGE;
-        pin_config.data_in_num = PIN_I2S_DIN;
-    }
-    else if (MODE == I2S_MODE_TX) {
-        pin_config.data_out_num = PIN_I2S_DOUT;
-        pin_config.data_in_num = I2S_PIN_NO_CHANGE;
-    }
+    pin_config.data_in_num = PIN_I2S_DIN;
+    pin_config.data_out_num = PIN_I2S_DOUT;
 
     i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
     i2s_set_pin(I2S_NUM, &pin_config);
@@ -113,16 +82,59 @@ void connectToNetwork()
 
 void sipMachineEvent(int code) {
     switch (code) {
-    case 0:
-        
+    case SIPMACHINE_EVENT_REGISTER_OK://注册成功
+        Serial.println("REGISTER OK");
         break;
 
-    case 1:
-        
+    case SIPMACHINE_EVENT_BYE://对方挂断电话
+        Serial.println(sipMachine.getTelNrIncomingCall() + String(" Bye Call"));
         break;
+
+    case SIPMACHINE_EVENT_CANCEL://对方取消电话
+        Serial.println(sipMachine.getTelNrIncomingCall() + String(" Cancel Call"));
+        break;
+
+    case SIPMACHINE_EVENT_INVITE_OK://对方接听电话
+        Serial.println(sipMachine.getTelNrIncomingCall() + String(" Accept incoming Call"));
+        break;
+
+    case SIPMACHINE_EVENT_MESSAGE_OK://发送消息成功
+        Serial.println( String("send Message to ") + sipMachine.getTelNrIncomingCall() + String(" Ok"));
+        break;
+    
+    case SIPMACHINE_EVENT_NOT_EXIST://呼叫号码不存在
+        Serial.println(sipMachine.getTelNrIncomingCall() + String(" Call Leg/Transaction Does Not Exist"));
+        break;
+
+    case SIPMACHINE_EVENT_BUSY_HERE://对方正忙
+        Serial.println(sipMachine.getTelNrIncomingCall() + String(" Busy Here"));
+        break;
+
     default:
+        // Serial.println(String(code) + " does not Exists :-)");
         break;
     }
+}
+
+/**
+ * 收到的pcm数据发送到喇叭
+ */
+void readSpeachPcmCb(int16_t pcm)
+{
+    int16_t sample[2];
+    sample[0] = pcm;
+    sample[1] = sample[0];
+    i2s_write_bytes(I2S_NUM_0, (const char *)&sample, 4, 0xffff);
+}
+
+/**
+ * 从i2s mic读取一个pcm数据，返回到数据包中
+ */
+int16_t writeSpeachPcmCb()
+{
+    int8_t pcm_buf[4];
+    i2s_read_bytes(I2S_NUM_0, (char *)&pcm_buf, 4, 0xffff);
+    return (int16_t)(pcm_buf[0] + pcm_buf[1] * 256);
 }
 
 void setup()
@@ -130,57 +142,29 @@ void setup()
     Serial.begin(115200);
     delay(1000);
 
-    if (SPIFFS.begin())
-    {
-        Serial.println("SPIFFS begin success");
-
-        File root = SPIFFS.open("/");
-        File file = root.openNextFile();
-        while (file) {
-            String fileName = file.name();
-            size_t fileSize = file.size();
-            Serial.printf("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
-            file = root.openNextFile();
-        }
-        Serial.printf("\n");
-    } else {
-        Serial.println("SPIFFS begin failed");
-        SPIFFS.format();
-    }
-
-    if (SD.begin(PIN_CARDCS))
-    {
-        Serial.println("SD begin success");
-
-        File root = SD.open("/");
-        File file = root.openNextFile();
-        while (file) {
-            String fileName = file.name();
-            size_t fileSize = file.size();
-            Serial.printf("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
-            file = root.openNextFile();
-        }
-        Serial.printf("\n");
-    } else {
-        Serial.println("SD begin failed");
-    }
-
     connectToNetwork();
 
     sipMachine.setup(WiFi.localIP().toString(), serverIp);
     sipMachine.setEvent(sipMachineEvent);
 
-    I2S_Init(I2S_MODE_TX, I2S_BITS_PER_SAMPLE_16BIT, I2S_NUM_TX, 8000);
-    // I2S_Init(I2S_MODE_RX, I2S_BITS_PER_SAMPLE_16BIT, I2S_NUM_RX, 8000);
+    I2S_Init(I2S_BITS_PER_SAMPLE_16BIT, I2S_NUM_TXRX, 8000);
+
+    sipMachine.setReadSpeachPcmCallback(readSpeachPcmCb);
+    sipMachine.setWriteSpeachPcmCallback(writeSpeachPcmCb);
+
 }
+
+unsigned long t2 = millis();
+unsigned long t4 = micros();
+unsigned long t5 = millis();
 
 void loop()
 {
     if (WiFi.status() == WL_CONNECTED) {
 
-        pcmIn = sipMachine.loop(pcmOut);
-        pcmOut = 0;
-        status = sipMachine.getStatus();
+        sipMachine.loop(0);
+
+        SipMachine::Status status = sipMachine.getStatus();
 
         switch (status)
         {
@@ -209,36 +193,11 @@ void loop()
 
         //通话中
         case SipMachine::call:
-            // pcmOut = pcmIn;
-
+            // 20s后挂断电话
             // if ((t5 + 20000) < millis())
             // {
-            //     t5 += 20000;
             //     sipMachine.bye();
-            //     fin.close();
-
             //     Serial.printf("bye bye\n");
-
-            // }
-
-            // if (t4 < micros())
-            // {
-            //     t4 += 125;
-
-            //     if (pcmIn == (688))
-            //     {
-            //         pcmIn = 0;
-            //     }
-            //     if (pcmIn > maxP)
-            //     {
-            //         maxP = pcmIn;
-            //     }
-            //     if (pcmIn < minP)
-            //     {
-            //         minP = pcmIn;
-            //     }
-            //     fin.write((uint8_t*)&pcmIn, 2);
-
             // }
             break;
 

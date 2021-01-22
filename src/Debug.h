@@ -3,12 +3,12 @@
 #include <Arduino.h>
 
 
-#define DEBUG 1
+#define DEBUG 0
 #define debug_print(str)   do { if (DEBUG) Serial.print(str); } while (0)
 #define debug_println( str) do { if (DEBUG) Serial.println(str); } while (0)
 
 
-#define DEBUG1 1
+#define DEBUG1 0
 #define debugL1_print(str)   do { if (DEBUG1) Serial.print(str); } while (0)
 #define debugL1_println( str) do { if (DEBUG1) Serial.println(str); } while (0)
 
